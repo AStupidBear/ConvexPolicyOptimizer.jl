@@ -1,0 +1,5 @@
+.vscode
+Manifest.toml
+deps/*
+!deps/build.jl
+!deps/build.sh
