@@ -1,7 +1,9 @@
+using Base.Iterators: repeated
+
 export admm_consensus
 
 function admm_consensus(opt, dim; epochs = 100, njobs = nworkers(), ρ = 1.0, αr = 1.0,
-            λ = 0.0, epsabs = 1e-4, epsrel = 1e-2, μ = 10.0, cb = identity, kws...)
+            λ = 0.0, epsabs = 1e-4, epsrel = 1e-2, μ = 10.0, cb = identity)
     # mean of x, xᵢ = z
     N, z, zpre = njobs, zeros(dim), zeros(dim)
     ρ = N == 1 ? 0.0 : ρ
@@ -12,9 +14,8 @@ function admm_consensus(opt, dim; epochs = 100, njobs = nworkers(), ρ = 1.0, α
     for t in 1:epochs
         # primal update for xᵢ
         # xᵢ := argmin(f(xᵢ) + ρ/2 ‖xᵢ - z + uᵢ‖₂²)
-        zs, ρs, is = repeated(z, N), repeated(ρ, N), 1:N
-        f = partial(opt; kws...)
-        xs .= pmap(f, zs, us, ρs, is)
+        zs, ρs = repeated(z, N), repeated(ρ, N)
+        xs .= map(opt, zs, us, ρs)
         N == 1 && return first(xs)
         # primal update for z with relaxation
         # z = 1/N ∑ᵢ(xᵢ + uᵢ)

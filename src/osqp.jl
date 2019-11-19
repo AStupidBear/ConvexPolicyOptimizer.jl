@@ -1,4 +1,3 @@
-
 using OSQP.OSQPMathProgBaseInterface: OSQPMathProgModel, update!, resetproblem
 import OSQP.OSQPMathProgBaseInterface.MathProgBase: setquadobj!
 

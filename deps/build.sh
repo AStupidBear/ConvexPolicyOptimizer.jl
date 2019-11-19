@@ -4,13 +4,14 @@ GUROBI=$CWD/usr/gurobi
 IPOPT=$CWD/usr/ipopt
 INTEL=$CWD/usr/intel
 SCIPOPTDIR=$CWD/usr/scipoptsuite
-FAKETIME=$CWD/usr/libfaketime
-mkdir -p $SCIPOPTDIR
+LICENSE=$CWD/usr/license
+mkdir -p $SCIPOPTDIR $LICENSE
 
 # gurobi
 if [ ! -f $GUROBI/linux64/bin/grbgetkey ]; then
     wget https://packages.gurobi.com/8.0/gurobi8.0.1_linux64.tar.gz
     tar xvzf gurobi*.tar.gz && mv gurobi801 $GUROBI && \rm gurobi*.tar.gz
+    $GUROBI/linux64/bin/grbgetkey 5b0babc0-0a23-11ea-9bcf-0a7c4f30bdbe
 fi
 
 # mkl
@@ -45,7 +46,7 @@ if [ ! -f $IPOPT/bin/ipopt ]; then
 fi
 
 # scip
-if [ -f $SCIPOPTDIR/bin/scip ]; then
+if [ ! -f $SCIPOPTDIR/bin/scip ]; then
     wget https://download.mosek.com/stable/8.1.0.64/mosektoolslinux64x86.tar.bz2
     tar xvjf mosek*.tar.bz2 && \rm mosek*.tar.bz2 && mv mosek $SCIPOPTDIR
     MSKDIR=$(echo $SCIPOPTDIR/mosek/*/tools/platform/*)
@@ -62,8 +63,53 @@ if [ -f $SCIPOPTDIR/bin/scip ]; then
     make && make install && cd $CWD && \rm -rf scipoptsuite-*
 fi
 
-# faketime
-if [ -f $FAKETIME/src/libfaketime.so.1 ]; then
-    git clone https://github.com/wolfcw/libfaketime.git $FAKETIME
-    cd $FAKETIME/src && make
-fi
+# license
+cat > $LICENSE/mosek.lic <<- EOF
+VENDOR MOSEKLM
+FEATURE PTS MOSEKLM 9 17-nov-2020 uncounted VENDOR_STRING=-1*-1*-1*0 \
+	HOSTID=DEMO TS_OK SIGN="1B99 AA0C B1EB 2317 A384 7390 187A \
+	2241 8A56 1863 B70A A62A 51C2 14D1 E90E 0BDC BB79 115F 1E34 \
+	8BDA 2BBA 32E6 9A5D 777B FE01 CDE8 356C 2541 5124 5F16" \
+	SIGN2="1201 FA9A DBA0 0A88 53FB 34B7 4C80 ABEA CD19 39EB 5644 \
+	1B7C 0200 7156 689D 186F 738F 9CDE CB6B C222 7EFA A60D 792D \
+	A4F4 3B97 E6A0 C5F9 5394 BACD E269"
+FEATURE PTON MOSEKLM 9 17-nov-2020 uncounted VENDOR_STRING=-1*-1*-1*0 \
+	HOSTID=DEMO TS_OK SIGN="18A8 09C0 3CD2 09FA B68B 8877 A8DD \
+	6F1B ECD4 AD4F 3E98 287D 95D2 DA3E 7B0C 058D D9BE F1D9 902E \
+	04C8 DA6C 865E 7633 352B 6E14 EDE0 3BEB DA62 A7C1 3F60" \
+	SIGN2="1684 BCF7 D5AE 904F 5E71 8C43 43DB 5AE9 4B02 56DF 44A4 \
+	7624 BB2F D2CC D174 109D 1C7F 78CA DB92 4CFC 6E63 520E A712 \
+	C900 7054 4075 A568 9478 EF1D E9E5"
+EOF
+
+cat > $LICENSE/pardiso.lic <<< '7B0D336BF36A2751AF3B391A642D903EFEDD038F1DE83F43FF6F909B'
+
+cat > $LICENSE/wsmp.lic <<- EOF
+-1045953726
+-325865645
+1736384656
+-1939018359
+2075595150
+371191215
+1784526268
+581818635
+1084814312
+-1884243425
+-638683284
+1014231349
+349833674
+738256699
+-713515432
+1957325745
+-716834666
+2056043543
+1610958852
+893981165
+-35583966
+-1785265485
+1032904816
+1639046912
+1152262969
+66489726
+831181535
+EOF
