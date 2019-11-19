@@ -1,16 +1,16 @@
 @with_kw mutable struct ConvexOpt <: BaseEstimator
+    w::Vector{Float32} = []
+    disc::KBinsDiscretizer = KBinsDiscretizer()
     method::String = "LP_OSQP"
     α::Float32 = 0.95
-    w::Vector{Float32} = []
+    n_bins::Int = 8
 end
 
-function fit!(m::ConvexOpt, x, y; dim = 0, period = 2^32, param = nothing)
+function _fit!(m::ConvexOpt, x, y, z, u, ρ; period = 2^32)
     @unpack method, α = m
     @unpack r, c⁺, c⁻, λ = y
     model = getmodel(method)
-    N, T = size(r)
-    F = ndims(x) == 3 ? size(x, 1) : 
-             dim == 0 ? maximum(x) : dim
+    F, N, T = length(z), size(r, 1), size(r, 2)
     # action/signal
     if ndims(x) == 2
         @variable(model, -1 <= w[f = 1:F] <= 1)
@@ -58,44 +58,46 @@ function fit!(m::ConvexOpt, x, y; dim = 0, period = 2^32, param = nothing)
         end
     end
     # objective
-    if isnothing(param)
-        ρ = 0
-        @expression(model, penalty, 0)
-    else
-        z, u, ρ = param
+    if ρ > 0
         @expression(model, penalty, sum((w[f] - z[f] + u[f])^2 for f in 1:F))
+    else
+        @expression(model, penalty, 0)
     end
     @expression(model, pnl, sum(r[n, t] * s[n, t] - c⁺[n, t] * Δs⁺[n, t] - c⁻[n, t] * Δs⁻[n, t] for t in 1:T for n in 1:N))
     @objective(model, Min, (ρ / 2) * penalty - (λ / N / T) * pnl)
-    log = @sprintf("JuMP-%d.log", myid())
+    log = @sprintf("JuMP-%d.log", myrank())
     @redirect(log, solve(model))
+    m.w = getvalue(w)
     obj = getobjectivevalue(model)
-    w, s = getvalue(w), getvalue(s)
-    @assert length(w) == F
-    @pack! m = w
-    @printf("objective: %.2e\n", obj)
-    return m
 end
 
-function fit_admm!(m::ConvexOpt, x, y; ka...)
-    dim = ndims(x) == 2 ? maximum(x) : size(x, 1) 
-    cb = function (w)
-        m.w = copy(w)
-        pnl = test(m, x, y)
-        @printf("pnl: %.2e\n", pnl)
+function fit!(m::ConvexOpt, x, y; columns = nothing, ka...)
+    @unpack n_bins = m
+    m.disc = KBinsDiscretizer(n_bins = n_bins)
+    if ndims(x) == 2
+        dim = maximum(x)
+        columns = string.("leaf:", 1:dim)
+    else
+        columns = something(columns, string.(1:size(x, 1)))
+        x = fit_transform!(m.disc, x)
+        dim = size(x, 1)
     end
-    dst = randstring() * ".bson"
-    BSON.bson(dst, x = x, y = y)
+    cb = function (w)
+        @pack! m = w
+        x′, y′ = part(x), map(part, y)
+        pnl = allmean(test(m, x′, y′))
+        @master @printf("pnl: %.2e\n", pnl)
+        @master visualize(m, columns)
+    end
     admm_consensus(dim; cb = cb, ka...) do z, u, ρ
-        data = bsload(dst, mmaparrays = true)
-        x, y = part(data[:x]), map(part, data[:y])
-        fit!(m, x, y, dim = dim, param = (z, u, ρ))
+        x′, y′ = part(x), map(part, y)
+        obj = _fit!(m, x′, y′, z, u, ρ)
+        @printf("rank: %d, objective: %.2e\n", myrank(), obj)
         hasnan(m.w) && fill!(m.w, 0)
-        pnl = test(m, x, y)
+        pnl = test(m, x′, y′)
         pnl < -10 && fill!(m.w, 0)
         return m.w
     end
-    rm(dst, force = true)
     return m
 end
 
@@ -103,7 +105,8 @@ function predict(m::ConvexOpt, x)
     if ndims(x) == 2
         return m.w[x]
     else
-        dropdims(transpose(m.w) *ᶜ x, dims = 1)
+        xd = transform(m.disc, x)
+        dropdims(transpose(m.w) *ᶜ xd, dims = 1)
     end
 end
 
@@ -130,8 +133,16 @@ function test(m::ConvexOpt, x, y)
     return λ / N / T * pnl 
 end
 
+function visualize(m::ConvexOpt, columns)
+    @unpack w, disc = m
+    if length(disc.bin_edges) > 0
+        columns = ["$c:$n" for c in columns for n in 1:disc.n_bins]
+    end
+    write_feaimpt(w, columns)
+end
+
 function getmodel(method)
-    nthreads = nprocs() > 1 ? 1 : 0
+    nthreads = worldsize() > 1 ? 1 : 0
     if method == "LP_OSQP"
         solver = OSQPSolver()
     elseif method == "LP_GUROBI"

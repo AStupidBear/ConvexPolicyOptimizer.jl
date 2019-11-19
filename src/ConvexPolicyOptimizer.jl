@@ -2,18 +2,21 @@ __precompile__(true)
 
 module ConvexPolicyOptimizer
 
-using Distributed, Printf, LinearAlgebra, Statistics, Random , SparseArrays
-using Parameters, BSON, BSONMmap, ScikitLearnBase 
-using JuMP, OSQP, AmplNLWriter
+using Distributed, Printf, LinearAlgebra, Statistics, Random, SparseArrays
+using Parameters, ProgressMeter, Iconv, SortingAlgorithms 
+using ScikitLearnBase, JuMP, OSQP, AmplNLWriter
 using OSQP.OSQPMathProgBaseInterface: OSQPSolver
-import ScikitLearnBase: BaseEstimator, fit!, predict
+import ScikitLearnBase: BaseEstimator, fit!, fit_transform!, predict, transform
+using MPI: SUM, Comm_size, Comm_rank, COMM_WORLD, Initialized, Allreduce, Allgather
 
-export ConvexOpt, fit_admm!, CPO
+export ConvexOpt, CPO
 
 const CPO = ConvexPolicyOptimizer
 
 include("util.jl")
 include("osqp.jl")
+include("mpi.jl")
+include("discretizer.jl")
 include("admm.jl")
 include("opt.jl")
 

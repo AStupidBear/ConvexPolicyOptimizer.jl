@@ -12,20 +12,6 @@ function hasnan(x)
     false
 end
 
-function part(x::AbstractArray{T, N}, dim = -2) where {T, N}
-    nprocs() == 1 && return x
-    dim = dim > 0 ? dim : N + dim + 1
-    dsize = size(x, dim)
-    csize = nworkers()
-    rank = myid() - 2
-    @assert csize <= dsize
-    chunk = ceil(Int, dsize / csize)
-    is = (rank * chunk + 1):min(dsize, (rank + 1) * chunk)  
-    view(x, ntuple(x -> x == dim ? is : (:), N)...)
-end
-
-part(x::Number) = x
-
 macro redirect(src, ex)
     src = src == :devnull ? "/dev/null" : src
     quote
@@ -41,4 +27,20 @@ macro redirect(src, ex)
             redirect_stderr(e)
         end
     end
+end
+
+function write_feaimpt(w, c; dst = "feaimpt.csv")
+    length(w) != length(c) && return
+    w, c = sortall(vec(w), vec(c), by = abs, rev = true)
+    open(dst, "w") do io
+        for i in 1:min(100, length(c))
+            write(io, togbk(c[i]), ',')
+            println(io, trunc(w[i], digits = 2))
+        end
+    end
+end
+
+function sortall(xs::AbstractArray...; kw...)
+    p = sortperm(first(xs); kw...)
+    map(x -> x[p], xs)
 end
