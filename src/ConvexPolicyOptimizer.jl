@@ -7,7 +7,7 @@ using Parameters, ProgressMeter, Iconv, SortingAlgorithms
 using ScikitLearnBase, JuMP, OSQP, AmplNLWriter
 using OSQP.OSQPMathProgBaseInterface: OSQPSolver
 import ScikitLearnBase: BaseEstimator, fit!, fit_transform!, predict, transform
-using MPI: SUM, Comm_size, Comm_rank, COMM_WORLD, Initialized, Allreduce, Allgather
+using MPI: Barrier, SUM, Comm_size, Comm_rank, COMM_WORLD, Initialized, Allreduce, Allgather
 
 export ConvexOpt, CPO
 

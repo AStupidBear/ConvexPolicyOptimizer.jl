@@ -4,6 +4,7 @@ using MPI
 using Test
 
 !isinteractive() && MPI.Init()
+cd(tempdir())
 
 F, N, T = 10, 50, 100
 Random.seed!(1234)
@@ -21,3 +22,6 @@ for method in ["LP_OSQP", "LP_MOSEK", "NLP"]
 end
 
 !isinteractive() && MPI.Finalize()
+
+# julia --project -e 'using ConvexPolicyOptimizer' && \
+# mpirun -np 10 julia --project test/runtests.jl

@@ -6,6 +6,8 @@
     n_bins::Int = 8
 end
 
+paramgrid(::ConvexOpt) = [Dict("α" => a) for a in [0.5:0.1:0.8..., 0.9:0.01:0.99..., 2, 3]]
+
 function _fit!(m::ConvexOpt, x, y, z, u, ρ; period = 2^32)
     @unpack method, α = m
     @unpack r, c⁺, c⁻, λ = y
@@ -58,17 +60,14 @@ function _fit!(m::ConvexOpt, x, y, z, u, ρ; period = 2^32)
         end
     end
     # objective
-    if ρ > 0
-        @expression(model, penalty, sum((w[f] - z[f] + u[f])^2 for f in 1:F))
-    else
-        @expression(model, penalty, 0)
-    end
+    @expression(model, penalty, sum((w[f] - z[f] + u[f])^2 for f in 1:F))
     @expression(model, pnl, sum(r[n, t] * s[n, t] - c⁺[n, t] * Δs⁺[n, t] - c⁻[n, t] * Δs⁻[n, t] for t in 1:T for n in 1:N))
     @objective(model, Min, (ρ / 2) * penalty - (λ / N / T) * pnl)
     log = @sprintf("JuMP-%d.log", myrank())
     @redirect(log, solve(model))
     m.w = getvalue(w)
-    obj = getobjectivevalue(model)
+    pnl = getvalue(pnl)
+    return (λ / N / T) * pnl
 end
 
 function fit!(m::ConvexOpt, x, y; columns = nothing, ka...)
@@ -86,13 +85,13 @@ function fit!(m::ConvexOpt, x, y; columns = nothing, ka...)
         @pack! m = w
         x′, y′ = part(x), map(part, y)
         pnl = allmean(test(m, x′, y′))
-        @master @printf("pnl: %.2e\n", pnl)
+        @master @printf("avgpnl: %.2e\n", pnl)
         @master visualize(m, columns)
     end
     admm_consensus(dim; cb = cb, ka...) do z, u, ρ
         x′, y′ = part(x), map(part, y)
-        obj = _fit!(m, x′, y′, z, u, ρ)
-        @printf("rank: %d, objective: %.2e\n", myrank(), obj)
+        pnl = _fit!(m, x′, y′, z, u, ρ)
+        @printf("rank: %d, pnl: %.2e\n", myrank(), pnl)
         hasnan(m.w) && fill!(m.w, 0)
         pnl = test(m, x′, y′)
         pnl < -10 && fill!(m.w, 0)
@@ -150,6 +149,7 @@ function getmodel(method)
     elseif method == "LP_MOSEK"
         solver = MosekSolver(MSK_IPAR_INTPNT_BASIS = 0, MSK_IPAR_NUM_THREADS = nthreads)
     elseif method == "NLP"
+        worldsize() > 1 && (ENV["OMP_NUM_THREADS"] = 1)
         ka = Dict(:linear_solver => "ma86", :max_cpu_time => 3e3)
         @static Sys.iswindows() && delete!(options, :linear_solver)
         options = [string(k) * "=" * string(v) for (k, v) in ka]

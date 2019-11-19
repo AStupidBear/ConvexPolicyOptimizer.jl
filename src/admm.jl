@@ -10,6 +10,7 @@ function admm_consensus(opt, dim; epochs = 100, ρ = 1.0, αr = 1.0, λ = 0.0,
     # Lᵨ(x, z, u) = ∑ᵢ(f(xᵢ) + ρ/2 ‖xᵢ - z + uᵢ‖₂²) + λ/2 ‖z‖₂²
     x, x̂, u = zeros(dim), zeros(dim), zeros(dim)
     for t in 1:epochs
+        Initialized() && Barrier(COMM_WORLD)
         @master println("----------------------------------------")
         # primal update for xᵢ
         # xᵢ := argmin(f(xᵢ) + ρ/2 ‖xᵢ - z + uᵢ‖₂²)
@@ -41,5 +42,5 @@ function admm_consensus(opt, dim; epochs = 100, ρ = 1.0, αr = 1.0, λ = 0.0,
         u ./= τ
         cb(z)
     end
-    return z
+    return allmean(x)
 end
