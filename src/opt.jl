@@ -68,10 +68,10 @@ function fit!(m::ConvexOpt, x, y; dim = 0, period = 2^32, param = nothing)
     @expression(model, pnl, sum(r[n, t] * s[n, t] - c⁺[n, t] * Δs⁺[n, t] - c⁻[n, t] * Δs⁻[n, t] for t in 1:T for n in 1:N))
     @objective(model, Min, (ρ / 2) * penalty - (λ / N / T) * pnl)
     log = @sprintf("JuMP-%d.log", myid())
-    # @redirect(log, solve(model))
-    solve(model)
+    @redirect(log, solve(model))
     obj = getobjectivevalue(model)
     w, s = getvalue(w), getvalue(s)
+    @assert length(w) == F
     @pack! m = w
     @printf("objective: %.2e\n", obj)
     return m
@@ -80,7 +80,7 @@ end
 function fit_admm!(m::ConvexOpt, x, y; ka...)
     dim = ndims(x) == 2 ? maximum(x) : size(x, 1) 
     cb = function (w)
-        @pack! m = w
+        m.w = copy(w)
         pnl = test(m, x, y)
         @printf("pnl: %.2e\n", pnl)
     end

@@ -15,7 +15,7 @@ function admm_consensus(opt, dim; epochs = 100, njobs = nworkers(), ρ = 1.0, α
         # primal update for xᵢ
         # xᵢ := argmin(f(xᵢ) + ρ/2 ‖xᵢ - z + uᵢ‖₂²)
         zs, ρs = repeated(z, N), repeated(ρ, N)
-        xs .= map(opt, zs, us, ρs)
+        xs .= pmap(opt, zs, us, ρs)
         N == 1 && return first(xs)
         # primal update for z with relaxation
         # z = 1/N ∑ᵢ(xᵢ + uᵢ)
