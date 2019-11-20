@@ -65,9 +65,7 @@ function _fit!(m::ConvexOpt, x, y, z, u, ρ; period = 2^32)
     @objective(model, Min, (ρ / 2) * penalty - (λ / N / T) * pnl)
     log = @sprintf("JuMP-%d.log", myrank())
     @redirect(log, solve(model))
-    m.w = getvalue(w)
-    pnl = getvalue(pnl)
-    return (λ / N / T) * pnl
+    m.w, pnl = getvalue(w), getvalue(pnl)
 end
 
 function fit!(m::ConvexOpt, x, y; columns = nothing, ka...)
@@ -81,21 +79,15 @@ function fit!(m::ConvexOpt, x, y; columns = nothing, ka...)
         x = fit_transform!(m.disc, x)
         dim = size(x, 1)
     end
-    cb = function (w)
-        @pack! m = w
-        x′, y′ = part(x), map(part, y)
-        pnl = allmean(test(m, x′, y′))
-        @master @printf("avgpnl: %.2e\n", pnl)
-        @master visualize(m, columns)
-    end
+    cb = z -> visualize(m, columns)
     admm_consensus(dim; cb = cb, ka...) do z, u, ρ
         x′, y′ = part(x), map(part, y)
-        pnl = _fit!(m, x′, y′, z, u, ρ)
-        @printf("rank: %d, pnl: %.2e\n", myrank(), pnl)
-        hasnan(m.w) && fill!(m.w, 0)
-        pnl = test(m, x′, y′)
-        pnl < -10 && fill!(m.w, 0)
-        return m.w
+        w, pnl = _fit!(m, x′, y′, z, u, ρ)
+        hasnan(w) && fill!(w, 0)
+        pnl < -10 && fill!(w, 0)
+        @pack! m = w
+        obj = -test(m, x′, y′, z)
+        return w, obj
     end
     return m
 end
@@ -109,8 +101,8 @@ function predict(m::ConvexOpt, x)
     end
 end
 
-function test(m::ConvexOpt, x, y)
-    @unpack α, method, w = m
+function test(m::ConvexOpt, x, y, w = m.w)
+    @unpack α, method = m
     @unpack r, c⁺, c⁻, λ = y
     ŷ = predict(m, x)
     trans = if startswith(method, "LP")

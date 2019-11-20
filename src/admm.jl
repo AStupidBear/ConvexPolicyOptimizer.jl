@@ -14,7 +14,11 @@ function admm_consensus(opt, dim; epochs = 100, ρ = 1.0, αr = 1.0, λ = 0.0,
         @master println("----------------------------------------")
         # primal update for xᵢ
         # xᵢ := argmin(f(xᵢ) + ρ/2 ‖xᵢ - z + uᵢ‖₂²)
-        x .= opt(z, u, ρ)
+        x, y = opt(z, u, ρ)
+        sleep(myrank() / worldsize() / 10)
+        @printf("rank: %d, obj: %.2e\n", myrank(), y)
+        ȳ = allmean(y)
+        @master @printf("avgobj: %.2e\n", ȳ)
         if N == 1
             cb(x)
             return x
@@ -42,5 +46,5 @@ function admm_consensus(opt, dim; epochs = 100, ρ = 1.0, αr = 1.0, λ = 0.0,
         u ./= τ
         cb(z)
     end
-    return allmean(x)
+    return z
 end
