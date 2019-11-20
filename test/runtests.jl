@@ -15,7 +15,7 @@ r = @. ifelse(y > 0, 1f0, -0.2f0)
 c⁺ = c⁻ = fill(1f-4, N, T)
 y = (r = r, c⁺ = c⁺, c⁻ = c⁻, λ = 1f0)
 
-for method in ["LP_OSQP", "LP_MOSEK", "NLP"]
+for method in ["LP_GUROBI", "LP_OSQP", "LP_MOSEK", "NLP"]
     model = ConvexOpt(method = method)
     CPO.fit!(model, x, y)
     CPO.fit!(model, x_int, y)

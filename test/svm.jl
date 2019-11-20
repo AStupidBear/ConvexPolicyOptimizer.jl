@@ -1,4 +1,5 @@
 using Random
+using Statistics
 using Convex
 using SCS
 using Optim
@@ -31,12 +32,16 @@ p[vec(y) .== 1] = sort(rand(1:10, sum(y .== 1)))
 p[vec(y) .== -1] = sort(rand(11:20, sum(y .== -1)))
 
 # consensus
-using ConvexPolicyOptimizer: myrank, @redirect
+using ConvexPolicyOptimizer: myrank, worldsize, @redirect
 admm_consensus(size(A, 2), λ = 1.0) do z, u, ρ
-    i = myrank() + 1
-    Ai = A[p .== i, :]
+    if MPI.Initialized()
+        i = myrank() + 1
+        Ai = A[p .== i, :]
+    else
+        Ai = A
+    end
     x0 = zeros(size(A, 2))
-    if false && @isdefined(Convex)
+    xᵒ = if @isdefined(Convex)
         x = Convex.Variable(length(x0))
         problem = minimize(sum(max(1 - Ai * x, 0.0)) + ρ / 2 * sumsquares(x - z + u))
         @redirect devnull Convex.solve!(problem, SCSSolver())
@@ -47,6 +52,15 @@ admm_consensus(size(A, 2), λ = 1.0) do z, u, ρ
         res = Optim.optimize(df, x0, BFGS())
         Optim.minimizer(res)
     end
+    if MPI.Initialized()
+        Ai = A[p .== (myrank() + 1), :]
+        yᵒ = mean(max.(1 .- Ai * xᵒ, 0.0))
+    else
+        Ai = A
+    end
+    z = MPI.Initialized() ? z : xᵒ
+    yᵒ = mean(max.(1 .- Ai * z, 0.0))
+    return xᵒ, yᵒ
 end
 
 !isinteractive() && MPI.Finalize()
