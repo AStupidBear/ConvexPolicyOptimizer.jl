@@ -11,7 +11,7 @@ mkdir -p $SCIPOPTDIR $LICENSE
 if [ ! -f $GUROBI/linux64/bin/grbgetkey ]; then
     wget https://packages.gurobi.com/8.0/gurobi8.0.1_linux64.tar.gz
     tar xvzf gurobi*.tar.gz && mv gurobi801 $GUROBI && \rm gurobi*.tar.gz
-    $GUROBI/linux64/bin/grbgetkey 5b0babc0-0a23-11ea-9bcf-0a7c4f30bdbe
+    $GUROBI/*/*/grbgetkey -q --path $LICENSE 5b0babc0-0a23-11ea-9bcf-0a7c4f30bdbe
 fi
 
 # mkl

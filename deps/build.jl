@@ -34,5 +34,4 @@ run(`bash $buildsh`)
 
 include("env.jl")
 Pkg.build("Gurobi")
-Pkg.build("Ipopt")
 Pkg.build("SCIP")
