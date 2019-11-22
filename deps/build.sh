@@ -1,11 +1,11 @@
 #!/bin/bash
-CWD=$(pwd)
-GUROBI=$CWD/usr/gurobi
-IPOPT=$CWD/usr/ipopt
-INTEL=$CWD/usr/intel
-SCIPOPTDIR=$CWD/usr/scipoptsuite
-LICENSE=$CWD/usr/license
-mkdir -p $SCIPOPTDIR $LICENSE
+CPO=$JULIA_DEPOT_PATH/cpo
+GUROBI=$CPO/gurobi
+IPOPT=$CPO/ipopt
+INTEL=$CPO/intel
+SCIPOPTDIR=$CPO/scipoptsuite
+LICENSE=$CPO/license
+mkdir -p $SCIPOPTDIR $LICENSE && cd /tmp
 
 # gurobi
 if [ ! -f $GUROBI/linux64/bin/grbgetkey ]; then
@@ -22,7 +22,7 @@ if [ ! -f $INTEL/bin/compilervars.sh ]; then
     sed -i "s:ARCH_SELECTED=ALL:ARCH_SELECTED=INTEL64:g" silent.cfg
     echo "ACCEPT_EULA=accept" >> silent.cfg
     ./install.sh --silent silent.cfg
-    cd $CWD && \rm -rf l_mkl_*
+    cd /tmp && \rm -rf l_mkl_*
 fi
 source $INTEL/bin/compilervars.sh intel64
 
@@ -42,7 +42,7 @@ if [ ! -f $IPOPT/bin/ipopt ]; then
         ADD_FFLAGS=-fPIC ADD_CFLAGS=-fPIC ADD_CXXFLAGS=-fPIC \
         ADD_CFLAGS=-fopenmp ADD_FFLAGS=-fopenmp ADD_CXXFLAGS=-fopenmp
         --with-blas="-L${MKLROOT}/lib/intel64 -lmkl_rt -lpthread -lm -ldl"
-    make && make install && cd $CWD && \rm -rf CoinIpopt
+    make && make install && cd /tmp && \rm -rf CoinIpopt
 fi
 
 # scip
@@ -60,7 +60,7 @@ if [ ! -f $SCIPOPTDIR/bin/scip ]; then
         -DLPS=msk -DMOSEK_INCLUDE_DIRS=$MSKDIR/h -DMOSEK_LIBRARY=$MSKDIR/bin/libmosek64.so \
         -DWORHP=off -DWORHP_INCLUDE_DIRS=$SCIPOPTDIR/worhp/include -DWORHP_LIBRARY=$SCIPOPTDIR/worhp/lib/libworhp.so \
         -DIPOPT=on -DIPOPT_LIBRARIES=$IPOPT/lib/libipopt.so ..
-    make && make install && cd $CWD && \rm -rf scipoptsuite-*
+    make && make install && cd /tmp && \rm -rf scipoptsuite-*
 fi
 
 # license
