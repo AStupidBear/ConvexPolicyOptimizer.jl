@@ -30,6 +30,7 @@ for dep in bindeps_context.deps
 end
 
 buildsh = joinpath(@__DIR__, "build.sh")
+ENV["JULIA_DEPOT_PATH"] = DEPOT_PATH[1]
 run(`bash $buildsh`)
 
 include("env.jl")
