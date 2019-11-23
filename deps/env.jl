@@ -1,0 +1,11 @@
+cpo = joinpath(DEPOT_PATH[1], "cpo")
+ENV["GUROBI_HOME"] = "$cpo/gurobi/linux64"
+ENV["SCIPOPTDIR"] = "$cpo/scipoptsuite"
+ENV["JULIA_IPOPT_LIBRARY_PATH"] = "$cpo/ipopt/lib"
+ENV["JULIA_IPOPT_EXECUTABLE_PATH"] = "$cpo/iopt/bin"
+ENV["MOSEKLM_LICENSE_FILE"] = "$cpo/license/mosek.lic"
+ENV["GRB_LICENSE_FILE"] = "$cpo/license/gurobi.lic"
+ENV["WSMPLICPATH"] = "$cpo/license/wsmp.lic"
+ENV["LD_LIBRARY_PATH"] = "$cpo/ipopt/lib:" * get(ENV, "LD_LIBRARY_PATH", "")
+ENV["PATH"] = "$cpo/gurobi/linux64/bin:" * get(ENV, "PATH", "")
+const IPOPT_AMPLEXE = "$cpo/ipopt/bin/ipopt"
