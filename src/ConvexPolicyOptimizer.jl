@@ -8,6 +8,7 @@ using ScikitLearnBase, JuMP, OSQP, AmplNLWriter
 using OSQP.OSQPMathProgBaseInterface: OSQPSolver
 import ScikitLearnBase: BaseEstimator, fit!, fit_transform!, predict, transform
 using MPI: Barrier, SUM, Comm_size, Comm_rank, COMM_WORLD, Initialized, Allreduce, Allgather
+import MLSuiteBase: paramgrid
 
 export ConvexOpt, CPO
 
